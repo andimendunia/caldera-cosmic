@@ -139,17 +139,17 @@ class extends Component {
             }
 
             // Read the text file content
-            $content = file_get_contents($this->file->getRealPath());
-            
+            $path = file_get_contents($this->file->getRealPath());
+                      
             // Split content into lines
-            $lines = explode("\n", $content);
+            $lines = explode("\n", $path);
             
             // Initialize variables to store extracted values
             $values = [
                 'model' => '',
                 'color' => '',
-                'mcs' => '',
                 'code_alt' => '',
+                'mcs' => '',
                 's_max' => 0,
                 's_min' => 0,
                 'tc10' => 0,
@@ -162,66 +162,55 @@ class extends Component {
             foreach ($lines as $line) {
                 $line = trim($line);
                 
-                // Debug line yang sedang diproses
+                // Debug the line being processed
                 $this->js('console.log("Processing line: '. addslashes($line) .'")');
                 
-                // Extract MCS dari baris yang mengandung "Compound"
+                // Extract data
                 if (strpos($line, 'Compound') !== false) {
                     // Extract MCS
                     if (preg_match('/OG\/RS\s+(\d{3})/i', $line, $matches)) {
                         $values['mcs'] = $matches[1];
-                        $this->js('console.log("Found MCS in Compound line: '. $matches[1] .'")');
+                        // $this->js('console.log("MCS in Compound line: '. $matches[1] .'")');
                     }
-                    
-                    // Extract Description (Warna) dari baris yang sama
-                    if (preg_match('/Description:\s*([^$]+)/i', $line, $matches)) {
-                        $values['color'] = trim($matches[1]);
-                        $this->js('console.log("Found Color in Description: '. $matches[1] .'")');
-                    }
+                    // // Extract Description (Warna) dari baris yang sama
+                    // if (preg_match('/Description:\s*([^$]+)/i', $line, $matches)) {
+                    //     $values['color'] = trim($matches[1]);
+                    //     $this->js('console.log("Found Color in Description: '. $matches[1] .'")');
+                    // }
                 }
-                // Extract Orderno as code_alt
-                elseif (preg_match('/Orderno\.:?\s*(\d+)/i', $line, $matches)) {
+                elseif (preg_match('/Orderno.*?(\d+)/', $line, $matches)) {
                     $values['code_alt'] = $this->safeString($matches[1]);
                 }
-                // Extract Description as color
-                elseif (preg_match('/Description:\s*(.+)$/i', $line, $matches)) {
-                    $values['color'] = $this->safeString($matches[1]);
-                }
-                // Extract ML as s_min
-                elseif (preg_match('/^ML\s+(\d+\.\d+)/i', $line, $matches)) {
+                // // Extract Description as color
+                // elseif (preg_match('/Description:\s*(.+)$/i', $line, $matches)) {
+                //     $values['color'] = $this->safeString($matches[1]);
+                // }
+                elseif (preg_match('/ML.*?(\d+\.?\d*)/', $line, $matches)) {
                     $values['s_min'] = $this->safeFloat($matches[1]);
                 }
-                // Extract MH as s_max
-                elseif (preg_match('/^MH\s+(\d+\.\d+)/i', $line, $matches)) {
+                elseif (preg_match('/MH.*?(\d+\.?\d*)/', $line, $matches)) {
                     $values['s_max'] = $this->safeFloat($matches[1]);
                 }
-                // Extract t10 as tc10
-                elseif (preg_match('/^t10\s+(\d+\.\d+)/i', $line, $matches)) {
+                elseif (preg_match('/t10.*?(\d+\.?\d*)/', $line, $matches)) {
                     $values['tc10'] = $this->safeFloat($matches[1]);
-                }
-                // Extract t50 as tc50
-                elseif (preg_match('/^t50\s+(\d+\.\d+)/i', $line, $matches)) {
+                }  
+                elseif (preg_match('/t50.*?(\d+\.?\d*)/', $line, $matches)) {
                     $values['tc50'] = $this->safeFloat($matches[1]);
                 }
-                // Extract t90 as tc90
-                elseif (preg_match('/^t90\s+(\d+\.\d+)/i', $line, $matches)) {
+                elseif (preg_match('/t90.*?(\d+\.?\d*)/', $line, $matches)) {
                     $values['tc90'] = $this->safeFloat($matches[1]);
                 }
-                // Extract status for eval
-                elseif (preg_match('/Status:\s*Pass/i', $line)) {
-                    $values['eval'] = 'pass';
-                }
-                elseif (preg_match('/Status:\s*Fail/i', $line)) {
-                    $values['eval'] = 'fail';
+                elseif (preg_match('/Status:\s*(Pass|Fail)/i', $line, $matches)) {
+                    $values['eval'] = strtolower($matches[1]);
                 }
             }
 
             // Debug final values
             $this->js('console.log("Before assignment - Color value:", "' . ($values['color'] ?? 'not set') . '")');
 
-            // Assign extracted values to component properties
+            // Assign extracted
             $this->e_model = $values['model'];
-            $this->e_color = $values['color'] ?? '';  // Menggunakan nilai dari Description
+            // $this->e_color = $values['color'] ?? '';  
             $this->e_mcs = $values['mcs'] ?? '';
             $this->e_code_alt = $values['code_alt'];
             $this->s_max = $values['s_max'];
@@ -234,9 +223,7 @@ class extends Component {
             // Debug after assignment
             $this->js('console.log("After assignment - Color value:", "' . $this->e_color . '")');
 
-            // Check if batch info should be updated
-            if((!$this->model && !$this->color && !$this->mcs && !$this->code_alt) && 
-               ($this->e_model || $this->e_color || $this->e_mcs || $this->e_code_alt)) 
+            if((!$this->model && !$this->color && !$this->mcs && !$this->code_alt) && ($this->e_model || $this->e_color || $this->e_mcs || $this->e_code_alt)) 
             {
                 $this->update_batch = true;
                 $this->updateBatchInfo();
